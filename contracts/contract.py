@@ -3,6 +3,8 @@ from genlayer import *
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 import hashlib,json
+from datetime import datetime,timezone
+def now():return int(datetime.now(timezone.utc).timestamp())
 def c(v,n=1000):return str(v).strip()[:n]
 def ident(v):
  x=c(v,64).upper()
@@ -54,11 +56,11 @@ class AssemblyMinute(gl.Contract):
    except:return False
   z=gl.vm.run_nondet_unsafe(run,validate)
   if not z['faithful']:raise gl.vm.UserError('[EXPECTED] published minutes must preserve the adopted record')
-  x.minutes_url=u;x.digest=z['digest'];x.published_at=gl.message.timestamp;x.state='PUBLISHED'
+  x.minutes_url=u;x.digest=z['digest'];x.published_at=now();x.state='PUBLISHED'
  @gl.public.write
  def object_minute(self,motion_id:str,evidence_url:str)->None:
   _,x=self._get(motion_id);u=link(evidence_url)
-  if x.state!='PUBLISHED' or int(gl.message.timestamp)>int(x.published_at)+432000:raise gl.vm.UserError('[EXPECTED] objection inside five-day publication window required')
+  if x.state!='PUBLISHED' or now()>int(x.published_at)+432000:raise gl.vm.UserError('[EXPECTED] objection inside five-day publication window required')
   x.objection_url=u;x.state='OBJECTED'
  @gl.public.write
  def reconcile(self,motion_id:str,corrected_url:str)->None:
@@ -68,7 +70,7 @@ class AssemblyMinute(gl.Contract):
  @gl.public.write
  def finalize(self,motion_id:str)->None:
   _,x=self._get(motion_id)
-  if x.state!='PUBLISHED' or int(gl.message.timestamp)<=int(x.published_at)+432000:raise gl.vm.UserError('[EXPECTED] published minute after objection window required')
+  if x.state!='PUBLISHED' or now()<=int(x.published_at)+432000:raise gl.vm.UserError('[EXPECTED] published minute after objection window required')
   x.state='FINAL'
  @gl.public.view
  def get_minute(self,motion_id:str)->dict:
